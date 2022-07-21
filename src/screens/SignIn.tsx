@@ -1,47 +1,65 @@
-import { VStack, Heading, Icon, useTheme } from "native-base";
+import { useState } from "react";
+import { Alert } from "react-native";
+import { VStack, Heading, Icon, useTheme, Box } from "native-base";
 import { Envelope, Key } from "phosphor-react-native";
 import auth from "@react-native-firebase/auth";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from "yup";
 
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
+import { ValidationMessage } from "../components/ValidationMessage";
 
 import Logo from "../assets/logo_primary.svg";
-import { useState } from "react";
-import { Alert } from "react-native";
+
+type SignInFormData = {
+    email: string;
+    password: string;
+}
+
+const schema = yup.object({
+    email: yup
+        .string()
+        .email("E-mail inválido")
+        .required("Informe um e-mail."),
+    password: yup
+        .string()
+        .min(6, "A senha deve ter pelo menos 6 caracteres")
+        .required("Informe uma senha.")
+})
 
 export function SignIn() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
     const [isLoading, setIsloading] = useState(false);
+
+    const { control, handleSubmit, formState: { errors } } = useForm({
+        resolver: yupResolver(schema)
+    });
 
     const { colors } = useTheme();
 
-    function handleSignIn() {
-        if (!email || !password) {
-            return Alert.alert("Entrar", "Informe e-mail e senha.");
-        }
-
+    function handleSignIn(data: SignInFormData) {
         setIsloading(true);
 
-        auth().signInWithEmailAndPassword(email, password)
-        .catch((error) => {
-            console.log(error);
-            setIsloading(false);
+        auth().signInWithEmailAndPassword(data.email, data.password)
+            .catch((error) => {
+                console.log(error);
+                setIsloading(false);
 
-            if(error.code === "auth/invalid-email") {
-                return Alert.alert("Entrar", "E-mail inválido.")
-            }
+                if (error.code === "auth/invalid-email") {
+                    return Alert.alert("Entrar", "E-mail inválido.")
+                }
 
-            if(error.code === "auth/wrong-password") {
-                return Alert.alert("Entrar", "E-mail ou senha inválida.")
-            }
+                if (error.code === "auth/wrong-password") {
+                    return Alert.alert("Entrar", "E-mail ou senha inválida.")
+                }
 
-            if(error.code === "auth/user-not-found") {
-                return Alert.alert("Entrar", "E-mail ou senha inválida.")
-            }
+                if (error.code === "auth/user-not-found") {
+                    return Alert.alert("Entrar", "E-mail ou senha inválida.")
+                }
 
-            return Alert.alert("Entrar", "Não foi possível acessar");
-        });
+                return Alert.alert("Entrar", "Não foi possível acessar");
+            });
     }
 
     return (
@@ -52,24 +70,45 @@ export function SignIn() {
                 Acesse sua conta
             </Heading>
 
-            <Input
-                placeholder="E-mail"
-                InputLeftElement={<Icon as={<Envelope color={colors.gray[300]} style={{ marginLeft: 16 }} />} />}
-                mb={4}
-                onChangeText={setEmail}
-            />
-            <Input
-                placeholder="Senha"
-                InputLeftElement={<Icon as={<Key color={colors.gray[300]} style={{ marginLeft: 16 }} />} />}
-                secureTextEntry
-                mb={8}
-                onChangeText={setPassword}
-            />
+            <VStack mb={4} w="full">
+                <Controller
+                    name="email"
+                    control={control}
+                    render={({ field }) => (
+                        <Input
+                            InputLeftElement={<Icon as={<Envelope color={colors.gray[300]} style={{ marginLeft: 16 }} />} />}
+                            placeholder="E-mail"
+                            onBlur={field.onBlur}
+                            onChangeText={(val) => field.onChange(val)}
+                            value={field.value}
+                        />
+                    )}
+                />
+                {errors.email?.message && <ValidationMessage message={errors.email?.message} mt={1} />}
+            </VStack>
+
+            <VStack mb={4} w="full">
+                <Controller
+                    name="password"
+                    control={control}
+                    render={({ field }) => (
+                        <Input
+                            InputLeftElement={<Icon as={<Key color={colors.gray[300]} style={{ marginLeft: 16 }} />} />}
+                            placeholder="Senha"
+                            secureTextEntry
+                            onBlur={field.onBlur}
+                            onChangeText={(val) => field.onChange(val)}
+                            value={field.value}
+                        />
+                    )}
+                />
+                {errors.password?.message && <ValidationMessage message={errors.password?.message} mt={1} />}
+            </VStack>
 
             <Button
                 title="Entrar"
                 w="full"
-                onPress={handleSignIn}
+                onPress={handleSubmit(handleSignIn)}
                 isLoading={isLoading}
             />
         </VStack>
