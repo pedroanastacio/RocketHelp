@@ -84,7 +84,7 @@ export function SignIn() {
                         />
                     )}
                 />
-                {errors.email?.message && <ValidationMessage message={errors.email?.message} mt={1} />}
+                {errors.email?.message && <ValidationMessage message={errors.email?.message as string} mt={1} />}
             </VStack>
 
             <VStack mb={4} w="full">
@@ -102,7 +102,7 @@ export function SignIn() {
                         />
                     )}
                 />
-                {errors.password?.message && <ValidationMessage message={errors.password?.message} mt={1} />}
+                {errors.password?.message && <ValidationMessage message={errors.password?.message as string} mt={1} />}
             </VStack>
 
             <Button

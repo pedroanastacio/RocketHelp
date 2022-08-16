@@ -1,32 +1,49 @@
-import { VStack } from "native-base";
 import { useState } from "react";
+import { VStack } from "native-base";
+import { Alert } from "react-native";
 import firestore from "@react-native-firebase/firestore";
 import { useNavigation } from "@react-navigation/native";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from "yup";
 
 import { Header } from "../components/Header";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
-import { Alert } from "react-native";
+import { ValidationMessage } from "../components/ValidationMessage";
+
+type RegisterFormData = {
+    patrimony: string;
+    description: string;
+}
+
+const schema = yup.object({
+    patrimony: yup
+        .string()
+        .required("Informe um patrimônio."),
+    description: yup
+        .string()
+        .required("Informe uma descrição.")
+})
 
 export function Register() {
     const [isLoading, setIsloading] = useState(false);
-    const [patrimony, setPatrimony] = useState("");
-    const [description, setDescription] = useState("");
+
+    const { control, handleSubmit, formState: { errors } } = useForm({
+        resolver: yupResolver(schema)
+    });
 
     const navigation = useNavigation();
 
-    function handleNewOrderRegister() {
-        if (!patrimony || !description) {
-            Alert.alert("Registrar", "Preencha todos os campos.")
-        }
+    function handleNewOrderRegister(data: RegisterFormData) {
 
         setIsloading(true);
 
         firestore()
             .collection("orders")
             .add({
-                patrimony,
-                description,
+                patrimony: data.patrimony,
+                description: data.description,
                 status: "open",
                 created_at: firestore.FieldValue.serverTimestamp()
             })
@@ -46,26 +63,46 @@ export function Register() {
             <Header title="Solicitação" />
 
             <VStack flex={1} pl={6} pr={6} pb={6}>
-                <Input
-                    placeholder="Número do patrimônio"
-                    mt={4}
-                    onChangeText={setPatrimony}
-                />
+                <VStack mt={4} w="full">
+                    <Controller
+                        name="patrimony"
+                        control={control}
+                        render={({ field }) => (
+                            <Input
+                                placeholder="Número do patrimônio"
+                                onBlur={field.onBlur}
+                                onChangeText={(val) => field.onChange(val)}
+                                value={field.value}
+                            />
+                        )}
+                    />
+                    {errors.patrimony?.message && <ValidationMessage message={errors.patrimony?.message as string} mt={1} />}
+                </VStack>
 
-                <Input
-                    placeholder="Descrição do problema"
-                    mt={5}
-                    flex={1}
-                    multiline
-                    textAlignVertical="top"
-                    onChangeText={setDescription}
-                />
+                <VStack mt={5} flex={1}>
+                    <Controller
+                        name="description"
+                        control={control}
+                        render={({ field }) => (
+                            <Input
+                                flex={1}
+                                multiline
+                                textAlignVertical="top"
+                                placeholder="Descrição do problema"
+                                onBlur={field.onBlur}
+                                onChangeText={(val) => field.onChange(val)}
+                                value={field.value}
+                            />
+                        )}
+                    />
+                    {errors.description?.message && <ValidationMessage message={errors.description?.message as string} mt={1} />}
+                </VStack>
 
                 <Button
                     title="Cadastrar"
                     mt={5}
                     isLoading={isLoading}
-                    onPress={handleNewOrderRegister}
+                    onPress={handleSubmit(handleNewOrderRegister)}
                 />
             </VStack>
         </VStack>

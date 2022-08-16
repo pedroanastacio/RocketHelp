@@ -1,8 +1,7 @@
 import { Text, ITextProps } from "native-base";
-import { DeepRequired, FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
 
 type Props = ITextProps & {
-    message: Merge<FieldError, FieldErrorsImpl<DeepRequired<any>>>
+    message: string
 }
 
 export function ValidationMessage({ message, ...rest }: Props) {

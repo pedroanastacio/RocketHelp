@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { VStack, Text, HStack, useTheme, ScrollView } from "native-base";
 import firestore from "@react-native-firebase/firestore";
 import { CircleWavyCheck, DesktopTower, Hourglass, ClipboardText } from "phosphor-react-native";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from "yup";
 
 import { Header } from "../components/Header";
 import { OrderProps } from "../components/Order";
@@ -11,10 +15,11 @@ import { CardDetails } from "../components/CardDetails";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
+
 import { OrderFirestoreDTO } from "../DTOs/OrderFirestoreDTO";
 
 import { dateFormat } from "../utils/firestoreDateFormat";
-import { Alert } from "react-native";
+import { ValidationMessage } from "../components/ValidationMessage";
 
 type RouteParams = {
     orderId: string;
@@ -26,11 +31,20 @@ type OrderDetails = OrderProps & {
     closed: string;
 }
 
+const schema = yup.object({
+    solution: yup
+        .string()
+        .required("Informe a solução para encerrar a solicitação."),
+})
+
 export function Details() {
     const [isLoading, setIsLoading] = useState(true);
     const [isClosingOrder, setIsClosingOrder] = useState(false);
-    const [solution, setSolution] = useState("");
     const [order, setOrder] = useState<OrderDetails>({} as OrderDetails);
+
+    const { control, handleSubmit, formState: { errors } } = useForm({
+        resolver: yupResolver(schema)
+    });
 
     const { colors } = useTheme();
     const navigation = useNavigation();
@@ -40,11 +54,7 @@ export function Details() {
     const isOrderStatusClosed = order.status === "closed";
     const isOrderStatusOpened = order.status === "open";
 
-    function handleOrderClose() {
-        if (!solution) {
-            return Alert.alert("Solicitação", "Informe a suloção para encerrar a solicitação.");
-        }
-
+    function handleOrderClose({ solution }) {
         setIsClosingOrder(true);
 
         firestore()
@@ -144,13 +154,24 @@ export function Details() {
                 >
                     {
                         isOrderStatusOpened &&
-                        <Input
-                            placeholder="Descrição da solução"
-                            onChangeText={setSolution}
-                            h={24}
-                            textAlignVertical="top"
-                            multiline
-                        />
+                        <>
+                            <Controller
+                                name="solution"
+                                control={control}
+                                render={({ field }) => (
+                                    <Input
+                                        placeholder="Descrição da solução"
+                                        h={24}
+                                        textAlignVertical="top"
+                                        multiline
+                                        onBlur={field.onBlur}
+                                        onChangeText={(val) => field.onChange(val)}
+                                        value={field.value}
+                                    />
+                                )}
+                            />
+                            {errors.solution?.message && <ValidationMessage message={errors.solution?.message as string} mt={1} />}
+                        </>
                     }
                 </CardDetails>
             </ScrollView>
@@ -160,7 +181,7 @@ export function Details() {
                 <Button
                     title="Encerrar solicitação"
                     m={5}
-                    onPress={handleOrderClose}
+                    onPress={handleSubmit(handleOrderClose)}
                     isLoading={isClosingOrder}
                 />
             }
