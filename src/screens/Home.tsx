@@ -60,11 +60,12 @@ export function Home() {
 
     useEffect(() => {
         setIsLoading(true);
- 
+
         if (searchText === "") {
             subscriber = firestore()
                 .collection("orders")
                 .where("status", "==", statusSelected)
+                .orderBy("created_at", "desc")
                 .onSnapshot(snapshot => {
                     const data = snapshot.docs.map(doc => {
                         const { patrimony, description, status, created_at } = doc.data();
@@ -80,12 +81,13 @@ export function Home() {
 
                     setOrders(data);
                     setIsLoading(false);
-                });
+                }, (error) => console.error(error));
         } else {
             subscriber = firestore()
                 .collection("orders")
                 .where("patrimony", "==", searchText)
                 .where("status", "==", statusSelected)
+                .orderBy("created_at", "desc")
                 .onSnapshot(snapshot => {
                     const data = snapshot.docs.map(doc => {
                         const { patrimony, description, status, created_at } = doc.data();
@@ -101,10 +103,10 @@ export function Home() {
 
                     setOrders(data);
                     setIsLoading(false);
-                });
+                }, (error) => console.error(error));
         }
 
-        return subscriber;
+        return () => { subscriber() };
     }, [searchText, statusSelected]);
 
     return (
