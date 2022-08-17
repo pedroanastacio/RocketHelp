@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert } from "react-native";
-import { VStack, Heading, Icon, useTheme, Box } from "native-base";
+import { VStack, Heading, Icon, useTheme } from "native-base";
 import { Envelope, Key } from "phosphor-react-native";
 import auth from "@react-native-firebase/auth";
 import { useForm, Controller } from "react-hook-form";

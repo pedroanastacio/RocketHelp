@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Badge, Center, FlatList, Heading, HStack, IconButton, Text, useTheme, VStack } from "native-base";
 import { ChatTeardropText, SignOut } from "phosphor-react-native";
-import { Alert } from "react-native";
+import { Alert, Keyboard } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
@@ -10,6 +10,7 @@ import { Filter } from "../components/Filter";
 import { Order, OrderProps } from "../components/Order";
 import { Button } from "../components/Button";
 import { Loading } from "../components/Loading";
+import { SearchBar } from "../components/SearchBar";
 
 import { dateFormat } from "../utils/firestoreDateFormat";
 
@@ -19,12 +20,17 @@ export function Home() {
     const [isLoading, setIsLoading] = useState(true);
     const [statusSelected, setStatusSelected] = useState<"open" | "closed">("open");
     const [orders, setOrders] = useState<OrderProps[]>([]);
+    const [searchText, setSearchText] = useState<string>("");
 
     const navigation = useNavigation();
     const { colors } = useTheme();
 
+    let subscriber: () => void;
+
     const isStatusSelectedOpen = statusSelected === "open";
     const isStatusSelectedClosed = statusSelected === "closed";
+
+    const isSearching = searchText !== "";
 
     function handleNewOrder() {
         navigation.navigate("new");
@@ -43,31 +49,63 @@ export function Home() {
             })
     }
 
+    function handleSearchTextChange(text: string) {
+        setSearchText(text);
+    }
+
+    function handleSearchCancel() {
+        setSearchText("");
+        Keyboard.dismiss();
+    }
+
     useEffect(() => {
         setIsLoading(true);
+ 
+        if (searchText === "") {
+            subscriber = firestore()
+                .collection("orders")
+                .where("status", "==", statusSelected)
+                .onSnapshot(snapshot => {
+                    const data = snapshot.docs.map(doc => {
+                        const { patrimony, description, status, created_at } = doc.data();
 
-        const subscriber = firestore()
-            .collection("orders")
-            .where("status", "==", statusSelected)
-            .onSnapshot(snapshot => {
-                const data = snapshot.docs.map(doc => {
-                    const { patrimony, description, status, created_at } = doc.data();
+                        return {
+                            id: doc.id,
+                            patrimony,
+                            description,
+                            status,
+                            when: dateFormat(created_at),
+                        }
+                    });
 
-                    return {
-                        id: doc.id,
-                        patrimony,
-                        description,
-                        status,
-                        when: dateFormat(created_at),
-                    }
+                    setOrders(data);
+                    setIsLoading(false);
                 });
+        } else {
+            subscriber = firestore()
+                .collection("orders")
+                .where("patrimony", "==", searchText)
+                .where("status", "==", statusSelected)
+                .onSnapshot(snapshot => {
+                    const data = snapshot.docs.map(doc => {
+                        const { patrimony, description, status, created_at } = doc.data();
 
-                setOrders(data);
-                setIsLoading(false);
-            });
+                        return {
+                            id: doc.id,
+                            patrimony,
+                            description,
+                            status,
+                            when: dateFormat(created_at),
+                        }
+                    });
+
+                    setOrders(data);
+                    setIsLoading(false);
+                });
+        }
 
         return subscriber;
-    }, [statusSelected])
+    }, [searchText, statusSelected]);
 
     return (
         <VStack flex={1} pb={6} bg="gray.700">
@@ -101,7 +139,7 @@ export function Home() {
                     </Badge>
                 </HStack>
 
-                <HStack space={3} mb={8}>
+                <HStack space={3} mb={4}>
                     <Filter
                         title="Em andamento"
                         type="open"
@@ -117,6 +155,12 @@ export function Home() {
                     />
                 </HStack>
 
+                <SearchBar
+                    text={searchText}
+                    onCancel={handleSearchCancel}
+                    onChangeText={handleSearchTextChange}
+                />
+
                 {
                     isLoading ? <Loading /> :
                         <FlatList
@@ -129,8 +173,10 @@ export function Home() {
                                 <Center>
                                     <ChatTeardropText color={colors.gray[300]} size={40} />
                                     <Text color="gray.300" fontSize="md" mt={6} textAlign="center">
-                                        Você ainda não possui {'\n'}
-                                        solicitações {isStatusSelectedOpen ? "em andamento" : "finalizadas"}
+                                        {isSearching ?
+                                            `Nenhuma solicitação ${isStatusSelectedOpen ? "em andamento" : "finalizada"} \n foi encontrada` :
+                                            `Você ainda não possui \n solicitações ${isStatusSelectedOpen ? "em andamento" : "finalizadas"}`
+                                        }
                                     </Text>
                                 </Center>
                             )}
