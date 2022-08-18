@@ -15,7 +15,6 @@ import { CardDetails } from "../components/CardDetails";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
-
 import { OrderFirestoreDTO } from "../DTOs/OrderFirestoreDTO";
 
 import { dateFormat } from "../utils/firestoreDateFormat";
@@ -28,7 +27,6 @@ type RouteParams = {
 type OrderDetails = OrderProps & {
     description: string;
     solution: string;
-    closed: string;
 }
 
 const schema = yup.object({
@@ -99,8 +97,8 @@ export function Details() {
                     description,
                     status,
                     solution,
-                    when: dateFormat(created_at),
-                    closed
+                    opennedWhen: dateFormat(created_at),
+                    closedWhen: closed,
                 });
 
                 setIsLoading(false);
@@ -143,14 +141,14 @@ export function Details() {
                     title="Descrição do problema"
                     description={order.description}
                     icon={ClipboardText}
-                    footer={`Registrado em ${order.when}`}
+                    footer={`Registrado em ${order.opennedWhen}`}
                 />
 
                 <CardDetails
                     title="Solução"
                     icon={CircleWavyCheck}
                     description={order.solution}
-                    footer={order.closed && `Encerrado em ${order.closed}`}
+                    footer={order.closedWhen && `Encerrado em ${order.closedWhen}`}
                 >
                     {
                         isOrderStatusOpened &&

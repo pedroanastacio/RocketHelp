@@ -1,11 +1,12 @@
 import { HStack, Text, Box, useTheme, VStack, Circle, Pressable, IPressableProps } from 'native-base';
-import { CircleWavyCheck, ClockAfternoon, Hourglass } from 'phosphor-react-native';
+import { CircleWavyCheck, ClockAfternoon, Hourglass, XCircle } from 'phosphor-react-native';
 
 export type OrderProps = {
     id: string;
     patrimony: string;
-    when: string;
-    status: "open" | "closed"
+    opennedWhen: string;
+    closedWhen?: string;
+    status: "open" | "closed";
 }
 
 type Props = IPressableProps & {
@@ -40,13 +41,25 @@ export function Order({ data, ...rest }: Props) {
                         Patrimônio {data.patrimony}
                     </Text>
 
-                    <HStack alignItems="center">
-                        <ClockAfternoon size={15} color={colors.gray[300]} />
+                    <VStack mt={1}>
+                        <HStack alignItems="center">
+                            <ClockAfternoon size={18} color={colors.gray[300]} />
 
-                        <Text color="gray.200" fontSize="xs" ml={1}>
-                            {data.when}
-                        </Text>
-                    </HStack>
+                            <Text color="gray.200" fontSize="xs" ml={1}>
+                                {data.opennedWhen}
+                            </Text>
+                        </HStack>
+
+                        {isStatusClosed &&
+                            <HStack alignItems="center">
+                                <XCircle size={18} color={colors.gray[300]} />
+
+                                <Text color="gray.200" fontSize="xs" ml={1}>
+                                    {data.closedWhen}
+                                </Text>
+                            </HStack>
+                        }
+                    </VStack>
                 </VStack>
 
                 <Circle bg="gray.500" h={12} w={12} mr={5}>

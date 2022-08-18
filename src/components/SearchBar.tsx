@@ -12,23 +12,26 @@ type Props = IInputProps & {
 export function SearchBar({ placeholder, text, onCancel, onChangeText, ...rest }: Props) {
     const { colors } = useTheme();
 
+    const isEmpty = text === "";
+
     return (
         <Input
             placeholder={placeholder ?? "Pesquisar"}
             bg="gray.600"
+            flex={1}
             h={12}
-            mb={4}
             size="md"
             borderWidth={0}
             fontSize="md"
             fontFamily="body"
-            color="white"
+            color="gray.100"
             placeholderTextColor="gray.300"
             _focus={{ bg: "gray.600" }}
             InputLeftElement={<Icon as={<MagnifyingGlass size={20} color={colors.gray[300]} style={{ marginLeft: 12 }} />} />}
-            InputRightElement={<Pressable onPress={onCancel}><Icon as={<X size={20} color={colors.gray[300]} style={{ marginRight: 12 }} />} /></Pressable>}
+            InputRightElement={<>{!isEmpty && <Pressable onPress={onCancel}><Icon as={<X size={20} color={colors.gray[300]} style={{ marginRight: 12 }} />} /></Pressable>}</>}
             value={text}
             onChangeText={onChangeText}
+            {...rest}
         />
     );
 }

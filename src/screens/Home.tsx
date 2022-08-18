@@ -1,6 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { Badge, Center, FlatList, Heading, HStack, IconButton, Text, useTheme, VStack } from "native-base";
-import { ChatTeardropText, SignOut } from "phosphor-react-native";
+import {
+    Badge,
+    Center,
+    IconButton,
+    FlatList,
+    Heading,
+    HStack,
+    Text,
+    useTheme,
+    VStack,
+    useDisclose,
+    Actionsheet,
+    Pressable
+} from "native-base";
+import {
+    Calendar,
+    ChatTeardropText,
+    SignOut,
+    SlidersHorizontal,
+    SortAscending,
+    SortDescending,
+    X
+} from "phosphor-react-native";
 import { Alert, Keyboard } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import auth from "@react-native-firebase/auth";
@@ -11,6 +32,8 @@ import { Order, OrderProps } from "../components/Order";
 import { Button } from "../components/Button";
 import { Loading } from "../components/Loading";
 import { SearchBar } from "../components/SearchBar";
+import { SortFilter } from "../components/SortFilter";
+import { FilterItem } from "../components/FilterItem";
 
 import { dateFormat } from "../utils/firestoreDateFormat";
 
@@ -21,9 +44,13 @@ export function Home() {
     const [statusSelected, setStatusSelected] = useState<"open" | "closed">("open");
     const [orders, setOrders] = useState<OrderProps[]>([]);
     const [searchText, setSearchText] = useState<string>("");
+    const [orderBy, setOrderBy] = useState<"created_at" | "closed_at" | null>(null);
+    const [sort, setSort] = useState<"asc" | "desc">("desc");
 
     const navigation = useNavigation();
     const { colors } = useTheme();
+
+    const { isOpen, onOpen, onClose } = useDisclose();
 
     let subscriber: () => void;
 
@@ -31,6 +58,9 @@ export function Home() {
     const isStatusSelectedClosed = statusSelected === "closed";
 
     const isSearching = searchText !== "";
+    const isOrdering = !!orderBy;
+
+    const dateToOrder = isStatusSelectedOpen ? "created_at" : "closed_at";
 
     function handleNewOrder() {
         navigation.navigate("new");
@@ -49,6 +79,14 @@ export function Home() {
             })
     }
 
+    function handleStatusOpenClick() {
+        setStatusSelected("open");
+    }
+
+    function handleStatusClosedClick() {
+        setStatusSelected("closed");
+    }
+
     function handleSearchTextChange(text: string) {
         setSearchText(text);
     }
@@ -58,6 +96,30 @@ export function Home() {
         Keyboard.dismiss();
     }
 
+    function handleOrderByCreatedAt() {
+        setOrderBy("created_at");
+    }
+
+    function handleOrderByClosedAt() {
+        setOrderBy("closed_at");
+    }
+
+    function handleOrderCancel() {
+        setOrderBy(null);
+    }
+
+    function handleSortClick() {
+        if (sort === "desc")
+            setSort("asc");
+        else
+            setSort("desc");
+    }
+
+    useEffect(() => {
+        setOrderBy(null);
+    }, [statusSelected])
+
+
     useEffect(() => {
         setIsLoading(true);
 
@@ -65,17 +127,18 @@ export function Home() {
             subscriber = firestore()
                 .collection("orders")
                 .where("status", "==", statusSelected)
-                .orderBy("created_at", "desc")
+                .orderBy(orderBy ?? dateToOrder, sort)
                 .onSnapshot(snapshot => {
                     const data = snapshot.docs.map(doc => {
-                        const { patrimony, description, status, created_at } = doc.data();
+                        const { patrimony, description, status, created_at, closed_at } = doc.data();
 
                         return {
                             id: doc.id,
                             patrimony,
                             description,
                             status,
-                            when: dateFormat(created_at),
+                            opennedWhen: dateFormat(created_at),
+                            closedWhen: dateFormat(closed_at),
                         }
                     });
 
@@ -87,17 +150,18 @@ export function Home() {
                 .collection("orders")
                 .where("patrimony", "==", searchText)
                 .where("status", "==", statusSelected)
-                .orderBy("created_at", "desc")
+                .orderBy(orderBy ?? dateToOrder, sort)
                 .onSnapshot(snapshot => {
                     const data = snapshot.docs.map(doc => {
-                        const { patrimony, description, status, created_at } = doc.data();
+                        const { patrimony, description, status, created_at, closed_at } = doc.data();
 
                         return {
                             id: doc.id,
                             patrimony,
                             description,
                             status,
-                            when: dateFormat(created_at),
+                            opennedWhen: dateFormat(created_at),
+                            closedWhen: dateFormat(closed_at),
                         }
                     });
 
@@ -107,7 +171,7 @@ export function Home() {
         }
 
         return () => { subscriber() };
-    }, [searchText, statusSelected]);
+    }, [searchText, statusSelected, orderBy, sort]);
 
     return (
         <VStack flex={1} pb={6} bg="gray.700">
@@ -125,6 +189,7 @@ export function Home() {
                 <IconButton
                     icon={<SignOut size={26} color={colors.gray[300]} />}
                     onPress={handleLogout}
+                    _pressed={{ bg: "gray.600" }}
                 />
             </HStack>
 
@@ -145,23 +210,88 @@ export function Home() {
                     <Filter
                         title="Em andamento"
                         type="open"
-                        onPress={() => setStatusSelected("open")}
+                        onPress={handleStatusOpenClick}
                         isActive={isStatusSelectedOpen}
                     />
 
                     <Filter
                         title="Finalizados"
                         type="closed"
-                        onPress={() => setStatusSelected("closed")}
+                        onPress={handleStatusClosedClick}
                         isActive={isStatusSelectedClosed}
                     />
                 </HStack>
 
-                <SearchBar
-                    text={searchText}
-                    onCancel={handleSearchCancel}
-                    onChangeText={handleSearchTextChange}
-                />
+                <HStack mb={4}>
+                    <SearchBar
+                        mr={3}
+                        text={searchText}
+                        onCancel={handleSearchCancel}
+                        onChangeText={handleSearchTextChange}
+                    />
+
+                    <IconButton
+                        onPress={onOpen}
+                        icon={<SlidersHorizontal size={24} color={colors.gray[300]} />}
+                        bgColor="gray.600"
+                        _pressed={{ bgColor: "gray.500" }}
+                    />
+
+                    <Actionsheet
+                        isOpen={isOpen}
+                        onClose={onClose}
+                    >
+                        <Actionsheet.Content bgColor="gray.600" py={4} px={6}>
+                            <VStack alignItems="center" mt={4}>
+                                <VStack></VStack>
+                                <Heading size="sm" color="gray.100" mb={4}>Ordernar por</Heading>
+
+                                <HStack space={3} mb={6}>
+                                    <SortFilter
+                                        isActive={orderBy === "created_at"}
+                                        onPress={handleOrderByCreatedAt}
+                                        title="Data de abertura"
+                                    />
+
+                                    <SortFilter
+                                        isActive={orderBy === "closed_at"}
+                                        onPress={handleOrderByClosedAt}
+                                        title="Data de finalização"
+                                        isDisabled={isStatusSelectedOpen}
+                                    />
+                                </HStack>
+
+                                <Heading size="sm" color="gray.100" mb={4}>Filtrar por</Heading>
+
+                                <VStack>
+                                    <FilterItem title="Hoje" subtitle={new Date().getDate().toString()} icon={<Calendar size={32} color={colors.red[500]} />} />
+                                </VStack>
+                            </VStack>
+                        </Actionsheet.Content>
+                    </Actionsheet>
+                </HStack>
+
+                {isOrdering &&
+                    <HStack mt={-2} mb={2} justifyContent="space-between" alignItems="center">
+                        <Pressable onPress={handleSortClick}>
+                            <HStack alignItems="center" space={1}>
+                                <Heading color="red.300" size="xs" fontWeight="light">
+                                    {orderBy === "created_at" ? "Data de abertura" : "Data de finalização"}
+                                </Heading>
+                                {sort === "desc" ?
+                                    <SortDescending size={20} color={colors.red[300]} />
+                                    :
+                                    <SortAscending size={20} color={colors.red[300]} />
+                                }
+                            </HStack>
+                        </Pressable>
+
+                        <IconButton
+                            onPress={handleOrderCancel}
+                            icon={<X size={18} color={colors.gray[300]} />}
+                        />
+                    </HStack>
+                }
 
                 {
                     isLoading ? <Loading /> :
@@ -187,6 +317,6 @@ export function Home() {
 
                 <Button title="Nova solicitação" onPress={handleNewOrder} />
             </VStack>
-        </VStack>
+        </VStack >
     );
 }
